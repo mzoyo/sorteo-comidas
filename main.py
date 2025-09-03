@@ -270,13 +270,19 @@ def main():
                 st.error(f"❌ Hay personas sin opciones de grupo: {', '.join(imposibles)}")
                 return
             
-            # Configurar semilla si se proporciona
-            seed = None
+            # Configurar semilla - siempre generar una para transparencia
             if seed_input.strip():
                 try:
                     seed = int(seed_input.strip())
+                    seed_type = "manual"
                 except ValueError:
                     seed = hash(seed_input.strip())
+                    seed_type = "manual"
+            else:
+                # Generar semilla automática basada en timestamp para reproducibilidad
+                import time
+                seed = int(time.time() * 1000) % 1000000  # Últimos 6 dígitos del timestamp
+                seed_type = "automática"
             
             # Realizar asignación
             with st.spinner("🔄 Calculando el mejor reparto..."):
@@ -285,9 +291,11 @@ def main():
             # Mostrar resultados
             st.success("✅ ¡Sorteo completado!")
             
-            # Mostrar semilla utilizada si existe
-            if seed is not None:
-                st.info(f"🌱 **Semilla utilizada:** {seed} (usa la misma semilla para obtener el mismo resultado)")
+            # Mostrar semilla utilizada SIEMPRE
+            if seed_type == "manual":
+                st.info(f"🌱 **Semilla utilizada:** {seed} (introducida manualmente)")
+            else:
+                st.info(f"🌱 **Semilla utilizada:** {seed} (generada automáticamente - usa esta semilla para repetir el mismo resultado)")
             
             # Participantes únicos
             st.subheader("👥 Participantes detectados")
@@ -332,8 +340,7 @@ def main():
                 diferencia_max = max(tamanios) - min(tamanios)
                 st.write(f"**Desviación total de objetivos:** {desviacion}")
                 st.write(f"**Diferencia entre grupo más grande y más pequeño:** {diferencia_max}")
-                if seed is not None:
-                    st.write(f"**Semilla utilizada:** {seed}")
+                st.write(f"**Semilla utilizada:** {seed}")
             
             # Resultados para copiar (siempre visible después del sorteo)
             st.divider()
@@ -342,10 +349,8 @@ def main():
             # Generar texto completo de resultados
             resultado_texto = "🍽️ RESULTADOS DEL SORTEO DE COMIDAS\n"
             resultado_texto += "=" * 50 + "\n"
-            if seed is not None:
-                resultado_texto += f"🌱 Semilla utilizada: {seed}\n"
-                resultado_texto += "=" * 50 + "\n"
-            resultado_texto += "\n"
+            resultado_texto += f"🌱 Semilla utilizada: {seed}\n"
+            resultado_texto += "=" * 50 + "\n\n"
             
             resultado_texto += f"👥 PARTICIPANTES: {len(personas)} personas\n"
             resultado_texto += f"Participantes: {', '.join(sorted(personas, key=lambda s: s.lower()))}\n\n"
