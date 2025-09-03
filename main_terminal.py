@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import streamlit as st
+import sys
 import re
 import random
 from collections import defaultdict
@@ -17,6 +17,45 @@ GROUP_ORDER = [
 ]
 
 HEADER_RE = re.compile(r"^\s*-\s*(Comida|Cena)\s+(\d+)\s*$", re.IGNORECASE)
+
+# ===================== Entrada =====================
+
+def leer_texto_multilinea() -> str:
+    """
+    Lee desde stdin hasta detectar:
+      - Dos líneas vacías consecutivas (doble Enter), o
+      - Una línea que diga exactamente 'FIN'
+    """
+    print("Pega aquí el mensaje completo.")
+    print("Para terminar: pulsa 2 veces Enter (línea en blanco + otra en blanco).")
+    print("O escribe 'FIN' en una línea sola y Enter.\n")
+
+    lineas = []
+    vacias_consecutivas = 0
+    try:
+        while True:
+            linea = sys.stdin.readline()
+            # EOF (por si el entorno no envía nueva línea)
+            if not linea:
+                break
+            # Normalizamos fin anticipado
+            if linea.strip() == "FIN":
+                break
+
+            # Detección de doble Enter
+            if linea.strip() == "":
+                vacias_consecutivas += 1
+                if vacias_consecutivas >= 2:
+                    break
+            else:
+                vacias_consecutivas = 0
+
+            lineas.append(linea)
+    except KeyboardInterrupt:
+        # Si cancelan con Ctrl+C, usamos lo que haya.
+        pass
+
+    return "".join(lineas).strip()
 
 # ===================== Parsing =====================
 
@@ -197,142 +236,65 @@ def asignar(people, allowed, groups, seed=None, max_intentos=2000):
         raise RuntimeError("No se pudo encontrar una asignación factible.")
     return mejor
 
-# ===================== Streamlit App =====================
+# ===================== Salida =====================
+
+def imprimir_participantes_unicos(people):
+    print("=== Participantes únicos detectados ===")
+    print(f"Total: {len(people)}\n")
+    for nombre in people:
+        print(f" - {nombre}")
+    print()
+
+def imprimir_resultado(asignacion, tamanios, objetivos, groups):
+    print("=== Resumen de tamaños por grupo ===")
+    for g, size, tgt in zip(groups, tamanios, objetivos):
+        print(f"{g:>10}: {size} (objetivo {tgt})")
+    print()
+
+    por_grupo = defaultdict(list)
+    for persona, g in asignacion.items():
+        por_grupo[g].append(persona)
+
+    for g in groups:
+        print(f"- {g}")
+        for nombre in sorted(por_grupo[g], key=lambda s: s.lower()):
+            print(f"  • {nombre}")
+        print()
+
+# ===================== Main =====================
 
 def main():
-    st.title("🍽️ Sorteo de Comidas")
-    st.markdown("### Organiza automáticamente a las personas en grupos de comidas y cenas")
-    
-    # Explicación del formato
-    with st.expander("📝 Formato del texto de entrada"):
-        st.markdown("""
-        **Formato esperado:**
-        
-        ```
-        TODO:
-        - Persona que puede ir a cualquier grupo
-        - Otra persona flexible
-        
-        - Comida 9
-        - Persona específica para comida del día 9
-        - Otra persona para comida del día 9
-        
-        - Cena 9
-        - Persona específica para cena del día 9
-        
-        - Comida 10
-        - Persona para comida del día 10
-        ...
-        ```
-        
-        **Notas:**
-        - Las personas en "TODO:" pueden asignarse a cualquier grupo
-        - Las personas bajo encabezados específicos solo van a esos grupos
-        - Si una persona aparece en varios grupos, puede ir a cualquiera de esos
-        """)
-    
-    # Área de texto para input
-    texto_input = st.text_area(
-        "Pega aquí el mensaje con los participantes:",
-        height=300,
-        placeholder="TODO:\n- Juan Pérez\n- María García\n\n- Comida 9\n- Ana López\n- Carlos Ruiz\n\n- Cena 9\n- Laura Martín\n..."
-    )
-    
-    # Opciones avanzadas
-    with st.expander("⚙️ Opciones avanzadas"):
-        seed_input = st.text_input(
-            "Semilla para el sorteo (opcional):", 
-            help="Si introduces la misma semilla, obtendrás siempre el mismo resultado. Déjalo vacío para resultados aleatorios."
-        )
-        max_intentos = st.slider("Máximo número de intentos:", 500, 5000, 2000)
-    
-    # Botón para ejecutar sorteo
-    if st.button("🎲 Realizar Sorteo", type="primary"):
-        if not texto_input.strip():
-            st.error("❌ Por favor, introduce el texto con los participantes.")
-            return
-            
-        try:
-            # Procesamiento
-            todo_any, group_lists = parse_message(texto_input)
-            personas, allowed, _ = build_eligibilities(todo_any, group_lists)
-            
-            # Aseguramos exactamente los 6 grupos objetivo en orden
-            grupos = [g for g in GROUP_ORDER][:6]
-            
-            if not personas:
-                st.error("❌ No se detectaron personas. Revisa el formato del texto.")
-                return
-                
-            # Chequeo de personas sin opciones
-            imposibles = [p for p in personas if len(allowed[p]) == 0]
-            if imposibles:
-                st.error(f"❌ Hay personas sin opciones de grupo: {', '.join(imposibles)}")
-                return
-            
-            # Configurar semilla si se proporciona
-            seed = None
-            if seed_input.strip():
-                try:
-                    seed = int(seed_input.strip())
-                except ValueError:
-                    seed = hash(seed_input.strip())
-            
-            # Realizar asignación
-            with st.spinner("🔄 Calculando el mejor reparto..."):
-                asignacion, tamanios, objetivos = asignar(personas, allowed, grupos, seed=seed, max_intentos=max_intentos)
-            
-            # Mostrar resultados
-            st.success("✅ ¡Sorteo completado!")
-            
-            # Participantes únicos
-            st.subheader("👥 Participantes detectados")
-            col1, col2 = st.columns([1, 3])
-            with col1:
-                st.metric("Total personas", len(personas))
-            with col2:
-                st.write(", ".join(sorted(personas, key=lambda s: s.lower())))
-            
-            # Resumen de tamaños
-            st.subheader("📊 Resumen de grupos")
-            cols = st.columns(len(grupos))
-            for i, (grupo, size, objetivo) in enumerate(zip(grupos, tamanios, objetivos)):
-                with cols[i]:
-                    delta = size - objetivo
-                    delta_str = f"{delta:+d}" if delta != 0 else "✓"
-                    st.metric(
-                        label=grupo,
-                        value=f"{size} personas",
-                        delta=delta_str if delta != 0 else None
-                    )
-            
-            # Asignaciones por grupo
-            st.subheader("🍽️ Asignaciones finales")
-            
-            por_grupo = defaultdict(list)
-            for persona, g in asignacion.items():
-                por_grupo[g].append(persona)
-            
-            # Mostrar en columnas
-            cols = st.columns(2)
-            for i, grupo in enumerate(grupos):
-                with cols[i % 2]:
-                    st.write(f"**{grupo}**")
-                    for nombre in sorted(por_grupo[grupo], key=lambda s: s.lower()):
-                        st.write(f"• {nombre}")
-                    st.write("")
-            
-            # Estadísticas adicionales
-            with st.expander("📈 Estadísticas del sorteo"):
-                desviacion = sum(abs(tamanios[i] - objetivos[i]) for i in range(len(grupos)))
-                diferencia_max = max(tamanios) - min(tamanios)
-                st.write(f"**Desviación total de objetivos:** {desviacion}")
-                st.write(f"**Diferencia entre grupo más grande y más pequeño:** {diferencia_max}")
-                if seed is not None:
-                    st.write(f"**Semilla utilizada:** {seed}")
-                    
-        except Exception as e:
-            st.error(f"❌ Error durante el sorteo: {str(e)}")
+    texto = leer_texto_multilinea()
+    if not texto:
+        print("No recibí texto. Vuelve a ejecutar y pega el mensaje.")
+        sys.exit(1)
+
+    todo_any, group_lists = parse_message(texto)
+    personas, allowed, _ = build_eligibilities(todo_any, group_lists)
+
+    # Aseguramos exactamente los 6 grupos objetivo en orden
+    grupos = [g for g in GROUP_ORDER][:6]
+
+    if not personas:
+        print("No se detectaron personas. Revisa el formato.")
+        sys.exit(2)
+
+    # Chequeo de imposibles
+    imposibles = [p for p in personas if len(allowed[p]) == 0]
+    if imposibles:
+        print("Hay personas sin opciones de grupo:", imposibles)
+        sys.exit(3)
+
+    # Imprimir participantes únicos antes del reparto
+    imprimir_participantes_unicos(personas)
+
+    try:
+        asignacion, tamanios, objetivos = asignar(personas, allowed, grupos, seed=None)
+    except RuntimeError as e:
+        print(str(e))
+        sys.exit(4)
+
+    imprimir_resultado(asignacion, tamanios, objetivos, grupos)
 
 if __name__ == "__main__":
     main()
