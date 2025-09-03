@@ -330,6 +330,42 @@ def main():
                 st.write(f"**Diferencia entre grupo más grande y más pequeño:** {diferencia_max}")
                 if seed is not None:
                     st.write(f"**Semilla utilizada:** {seed}")
+            
+            # Botón para copiar resultados
+            st.divider()
+            
+            # Generar texto completo de resultados
+            resultado_texto = "🍽️ RESULTADOS DEL SORTEO DE COMIDAS\n"
+            resultado_texto += "=" * 50 + "\n\n"
+            
+            resultado_texto += f"👥 PARTICIPANTES: {len(personas)} personas\n"
+            resultado_texto += f"Participantes: {', '.join(sorted(personas, key=lambda s: s.lower()))}\n\n"
+            
+            resultado_texto += "📊 RESUMEN DE GRUPOS:\n"
+            for grupo, size, objetivo in zip(grupos, tamanios, objetivos):
+                delta = size - objetivo
+                delta_str = f" ({delta:+d})" if delta != 0 else " (✓)"
+                resultado_texto += f"• {grupo}: {size} personas{delta_str}\n"
+            resultado_texto += "\n"
+            
+            resultado_texto += "🍽️ ASIGNACIONES FINALES:\n"
+            resultado_texto += "-" * 30 + "\n"
+            for grupo in grupos:
+                resultado_texto += f"\n{grupo.upper()}:\n"
+                for nombre in sorted(por_grupo[grupo], key=lambda s: s.lower()):
+                    resultado_texto += f"  • {nombre}\n"
+            
+            resultado_texto += "\n" + "=" * 50 + "\n"
+            resultado_texto += f"📈 Estadísticas: Desviación={desviacion}, Diferencia máx={diferencia_max}"
+            if seed is not None:
+                resultado_texto += f", Semilla={seed}"
+            
+            # Mostrar botón de copiar
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("📋 Copiar Resultados del Sorteo", type="secondary", use_container_width=True):
+                    st.code(resultado_texto, language=None)
+                    st.success("📋 ¡Resultados listos para copiar! Selecciona todo el texto de arriba y copia con Ctrl+C")
                     
         except Exception as e:
             st.error(f"❌ Error durante el sorteo: {str(e)}")
