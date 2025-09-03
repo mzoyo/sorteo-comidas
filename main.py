@@ -285,6 +285,10 @@ def main():
             # Mostrar resultados
             st.success("✅ ¡Sorteo completado!")
             
+            # Mostrar semilla utilizada si existe
+            if seed is not None:
+                st.info(f"🌱 **Semilla utilizada:** {seed} (usa la misma semilla para obtener el mismo resultado)")
+            
             # Participantes únicos
             st.subheader("👥 Participantes detectados")
             col1, col2 = st.columns([1, 3])
@@ -337,7 +341,11 @@ def main():
             
             # Generar texto completo de resultados
             resultado_texto = "🍽️ RESULTADOS DEL SORTEO DE COMIDAS\n"
-            resultado_texto += "=" * 50 + "\n\n"
+            resultado_texto += "=" * 50 + "\n"
+            if seed is not None:
+                resultado_texto += f"🌱 Semilla utilizada: {seed}\n"
+                resultado_texto += "=" * 50 + "\n"
+            resultado_texto += "\n"
             
             resultado_texto += f"👥 PARTICIPANTES: {len(personas)} personas\n"
             resultado_texto += f"Participantes: {', '.join(sorted(personas, key=lambda s: s.lower()))}\n\n"
@@ -358,8 +366,6 @@ def main():
             
             resultado_texto += "\n" + "=" * 50 + "\n"
             resultado_texto += f"📈 Estadísticas: Desviación={desviacion}, Diferencia máx={diferencia_max}"
-            if seed is not None:
-                resultado_texto += f", Semilla={seed}"
             
             # Mostrar el texto en un área de texto copiable
             st.info("💡 **Instrucciones para móvil:** Mantén presionado sobre el texto de abajo, selecciona todo y copia.")
