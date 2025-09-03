@@ -331,8 +331,9 @@ def main():
                 if seed is not None:
                     st.write(f"**Semilla utilizada:** {seed}")
             
-            # Botón para copiar resultados
+            # Resultados para copiar (siempre visible después del sorteo)
             st.divider()
+            st.subheader("📋 Resultados para copiar")
             
             # Generar texto completo de resultados
             resultado_texto = "🍽️ RESULTADOS DEL SORTEO DE COMIDAS\n"
@@ -360,12 +361,14 @@ def main():
             if seed is not None:
                 resultado_texto += f", Semilla={seed}"
             
-            # Mostrar botón de copiar
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                if st.button("📋 Copiar Resultados del Sorteo", type="secondary", use_container_width=True):
-                    st.code(resultado_texto, language=None)
-                    st.success("📋 ¡Resultados listos para copiar! Selecciona todo el texto de arriba y copia con Ctrl+C")
+            # Mostrar el texto en un área de texto copiable
+            st.info("💡 **Instrucciones para móvil:** Mantén presionado sobre el texto de abajo, selecciona todo y copia.")
+            st.text_area(
+                "Selecciona todo el texto y copia con Ctrl+C (o mantén presionado en móvil):",
+                value=resultado_texto,
+                height=400,
+                help="En móvil: mantén presionado sobre el texto, selecciona todo y copia"
+            )
                     
         except Exception as e:
             st.error(f"❌ Error durante el sorteo: {str(e)}")
